@@ -66,7 +66,6 @@ The goal is to show that **LoRA can adapt LLMs to specific tasks** with minimal 
 
 ---
 
-## 🚀 Getting Started
 
 ### 1. Clone the Repository
 ```bash
@@ -74,39 +73,3 @@ git clone https://github.com/yourusername/lora-finetuning.git
 cd lora-finetuning
 ```
 
-
-```
-
-Key dependencies:
-- `torch`
-- `transformers`
-- `datasets`
-- `peft`
-- `bitsandbytes`
-
-
-
----
-
-## 🧪 Evaluation
-
-We evaluate the model using:
-- **Perplexity**: Lower values indicate better adaptation.
-- **Qualitative checks**: Compare reasoning and answer style between base and tuned models.
-
----
-
-
-## 📈 Key Takeaways
-
-- LoRA allows **task-specific fine-tuning** without retraining the full model.
-- **4-bit quantization** makes fine-tuning feasible on low-VRAM GPUs.
-- Adapters are **lightweight and reusable**, enabling efficient multi-task workflows.
-
-
-
-## ⭐ Acknowledgments
-- [Hugging Face Transformers](https://github.com/huggingface/transformers)
-- [PEFT](https://github.com/huggingface/peft)
-- [BitsAndBytes](https://github.com/TimDettmers/bitsandbytes)
-- Original LoRA paper: [https://arxiv.org/abs/2106.09685](https://arxiv.org/abs/2106.09685)
