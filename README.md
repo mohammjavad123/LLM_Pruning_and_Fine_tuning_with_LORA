@@ -2,6 +2,7 @@
 
 This repository demonstrates how to **efficiently fine-tune large language models (LLMs)** using **LoRA (Low-Rank Adaptation)**, significantly reducing memory requirements and training time compared to full model fine-tuning.  
 The project includes both **theoretical explanations** and **practical implementations** using Hugging Face's `transformers` and `PEFT` libraries, with 4-bit quantization via `bitsandbytes` for resource efficiency.
+In addition to LoRA fine-tuning, we integrated SparseGPT pruning to reduce the base model size and speed up inference. SparseGPT applies activation-aware, block-wise pruning to remove redundant weights while maintaining performance. We evaluated the base model, the SparseGPT-pruned model on and summarization  tasks. Evaluation included perplexity for reasoning and ROUGE scores for summarization, allowing us to measure the trade-offs between efficiency gains and task performance across different sparsity levels.
 
 ---
 
@@ -60,25 +61,8 @@ The goal is to show that **LoRA can adapt LLMs to specific tasks** with minimal 
   - GSM-8K fine-tuned models adapted their reasoning style and output formatting to match training examples.
   - On the custom dataset, the model successfully learned domain-specific patterns and generalized to unseen cases.
 - **Efficiency Gains**:  
-  - Training completed on a single consumer GPU (RTX 3060 Ti, 8GB VRAM) using 4-bit quantization.
   - Memory footprint was reduced dramatically compared to full fine-tuning.
 
----
-
-## 📂 Repository Structure
-
-```
-.
-├── notebooks/
-│   ├── lora_theory_and_gsm8k.ipynb     # Theory + GSM-8K fine-tuning
-│   ├── lora_custom_dataset.ipynb       # Fine-tuning on custom dataset
-│   └── lora_evaluation.ipynb           # Evaluation & perplexity testing
-├── data/
-│   ├── custom_dataset.jsonl            # Example custom dataset
-│   └── gsm8k/                          # GSM-8K subset used for training
-├── requirements.txt                    # Python dependencies
-└── README.md                           # Project documentation
-```
 
 ---
 
@@ -90,9 +74,7 @@ git clone https://github.com/yourusername/lora-finetuning.git
 cd lora-finetuning
 ```
 
-### 2. Install Dependencies
-```bash
-pip install -r requirements.txt
+
 ```
 
 Key dependencies:
@@ -102,14 +84,7 @@ Key dependencies:
 - `peft`
 - `bitsandbytes`
 
-### 3. Prepare Data
-- Place your dataset in `data/` (supports JSONL, CSV, or Hugging Face datasets).
-- Update dataset paths in the notebooks.
 
-### 4. Run Fine-Tuning
-Open and execute the provided notebooks:
-- **`lora_theory_and_gsm8k.ipynb`** – Learn LoRA theory and fine-tune on GSM-8K.
-- **`lora_custom_dataset.ipynb`** – Fine-tune on your own dataset.
 
 ---
 
@@ -121,22 +96,6 @@ We evaluate the model using:
 
 ---
 
-## 📦 Model Saving & Loading
-
-**Save Adapter:**
-```python
-model.save_pretrained("lora_adapter")
-tokenizer.save_pretrained("lora_adapter")
-```
-
-**Load Adapter:**
-```python
-from peft import PeftModel
-model = AutoModelForCausalLM.from_pretrained(base_model_path)
-model = PeftModel.from_pretrained(model, "lora_adapter")
-```
-
----
 
 ## 📈 Key Takeaways
 
@@ -144,18 +103,7 @@ model = PeftModel.from_pretrained(model, "lora_adapter")
 - **4-bit quantization** makes fine-tuning feasible on low-VRAM GPUs.
 - Adapters are **lightweight and reusable**, enabling efficient multi-task workflows.
 
----
 
-## 📜 License
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Contributing
-Pull requests are welcome!  
-For major changes, please open an issue first to discuss what you’d like to modify.
-
----
 
 ## ⭐ Acknowledgments
 - [Hugging Face Transformers](https://github.com/huggingface/transformers)
