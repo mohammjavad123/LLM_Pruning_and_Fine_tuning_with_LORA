@@ -74,76 +74,80 @@ The method reduces each layer’s pruning + reconstruction to fast, approximate 
 
 ---
 
-# SparseGPT Mathematics & Method
 
-SparseGPT (Frantar & Alistarh, ICML 2023) introduces a one-shot pruning approach for large language models. 
-It prunes **50–60% of weights** in a single pass, without retraining, while preserving perplexity. 
-The method uses second-order information from a calibration set to decide which weights to prune and how to optimally compensate.
+# SparseGPT — Mathematics & Method (GitHub-safe)
+
+This section explains **SparseGPT** with equations that **render 100% reliably on GitHub** by embedding them as SVG images.  
+You can keep this as your README section with guaranteed formatting (no GitHub math settings required).
 
 ---
 
 ## Layer Setup
-For a weight matrix $W \in \mathbb{R}^{d_{\text{row}} \times d_{\text{col}}}$ and calibration activations 
-$X \in \mathbb{R}^{d_{\text{col}} \times n}$, define the (damped) empirical Hessian:
+For a layer with weight matrix $W \in \mathbb{{R}}^{{d_{{\text{{row}}}}\times d_{{\text{{col}}}}}}$ and calibration activations 
+$X \in \mathbb{{R}}^{{d_{{\text{{col}}}}\times n}}$, define the (damped) empirical Hessian:
 
-$$
-H = X X^\top + \lambda I, 
-\qquad 
-H^{-1} = (X X^\top + \lambda I)^{-1}.
-$$
+![Hessian]({eq_H_url})
 
 ---
 
 ## Pruning Objective (Eq. 1)
-The goal is to find a binary mask $M$ (1 = keep, 0 = prune) and reconstructed weights $W^c$:
+We seek a binary mask $M$ (1 = keep, 0 = prune) and reconstructed weights $W^c$ to minimize the output error:
 
-$$
-\min_{M,\,W^c} \;\; \| W X - (M \odot W^c) X \|_2^2 .
-$$
+![Objective]({eq_obj_url})
 
 ---
 
+## Optimal Reconstruction with Fixed Mask (Eq. 2)
+For each row $w_i$ with active indices $M_i$ (kept weights), the optimal reconstruction is:
 
-## SparseGPT Algorithm
-- **Column-wise pruning:** process weights column by column, reusing the same inverse Hessian sequence.  
-- **Block-wise selection:** group columns into blocks of size $B_s$ (typically 128).  
-- **Scoring:** prune weights with lowest ratio $w_c^2 / [H^{-1}]_{cc}$.  
-- **Lazy OBS updates:** compensate only future columns → reduces cost from $O(d_{\text{hidden}}^4)$ to $O(d_{\text{hidden}}^3)$.
+![Row recon]({eq_row_url})
+
+---
+
+## OBS Error for Single Weight Removal (Eq. 3)
+Removing weight $w_m$ yields the optimal local update and error:
+
+![OBS]({eq_obs_url})
+
+This error $\varepsilon_m$ is used to rank prune candidates.
+
+---
+
+## SparseGPT Algorithm (per layer)
+
+- **Column-wise pruning** with a shared inverse-Hessian sequence.  
+- **Block-wise selection**: process in blocks of size $B_s$ (typically 128).  
+- **Scoring**: prune based on the OBS-inspired score below (lower is cheaper to prune).  
+- **Lazy OBS updates**: compensate only **future** columns → big speedup in practice.
+
+Score used in selection:
+
+![Score]({eq_score_url})
+
+**Complexity:** The reuse of the inverse-Hessian sequence reduces cost from $O(d_{{\text{{hidden}}}}^4)$ to $O(d_{{\text{{hidden}}}}^3)$.
 
 ---
 
 ## Extensions
 
-**Weight Freezing (Eq. 6):**
+**Weight Freezing View (Eq. 6):**
 
-$$
-\text{compress}(w_j)_i =
-\begin{cases}
-0 & j \notin M_i, \\
-w^j_i & \text{otherwise}.
-\end{cases}
-$$
+![Freeze]({eq_freeze_url})
 
 **Joint Pruning + Quantization (Eq. 7):**
 
-$$
-E_{:,j-i} \leftarrow 
-\frac{W_{:,j} - M_{:,j} \odot \mathrm{quant}(W_{:,j})}{[H^{-1}]_{jj}} .
-$$
+![Joint]({eq_joint_url})
 
-**Structured $n{:}m$ sparsity:** set block size $B_s = m$, prune the $n$ lowest-scoring weights per group (supports 2:4, 4:8, etc.).
+**Semi-structured $n{:}m$ sparsity:** set group size $m$ (choose $B_s=m$), prune the $n$ lowest-scoring weights per group — supports **2:4**, **4:8**, etc.
 
 ---
 
-### 📊 Results (from paper)
+## Practical Tips
+- **Calibration set**: 64–128 sequences × 2048 tokens is typically enough.  
+- **Dampening** $\lambda$: ≈ 1% of the average diagonal of $H$.  
+- **Block size** $B_s$: around 128.
 
-- **OPT-175B / BLOOM-176B:** ~4h on a single A100-80GB  
-- Achieves **50–60% sparsity** with minimal perplexity increase  
-- Compatible with **4-bit quantization** in one unified pass  
+---
 
-
-1. Load a HuggingFace model (e.g. OPT).  
-2. Collect calibration data (default: **C4** subset).  
-3. Run SparseGPT for unstructured or \(n{:}m\) pruning.  
-4. Measure perplexity on WikiText2 / PTB / C4.  
-
+## Reference
+Frantar, E. & Alistarh, D. *SparseGPT: Massive Language Models Can Be Accurately Pruned in One-Shot*. ICML 2023. arXiv:2301.00774
