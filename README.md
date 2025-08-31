@@ -103,28 +103,6 @@ $$
 
 ---
 
-## Optimal Reconstruction with Fixed Mask (Eq. 2)
-If $M$ is fixed, then for each row $w_i$ with active indices $M_i$:
-
-$$
-(w_i)_{M_i} 
-= (X_{M_i} X_{M_i}^\top)^{-1} \, X_{M_i} \, \big((w_i)_{M_i} X_{M_i}\big)^\top .
-$$
-
----
-
-## OBS Error for Single Weight Removal (Eq. 3)
-If we prune weight $w_m$, the optimal local update and associated error are:
-
-$$
-\delta_m = - \frac{w_m}{[H^{-1}]_{mm}} \, H^{-1}_{:,m}, 
-\qquad 
-\varepsilon_m = \frac{w_m^2}{[H^{-1}]_{mm}} .
-$$
-
-This score $\varepsilon_m$ is used to decide which weights are cheapest to remove.
-
----
 
 ## SparseGPT Algorithm
 - **Column-wise pruning:** process weights column by column, reusing the same inverse Hessian sequence.  
