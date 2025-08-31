@@ -74,82 +74,86 @@ The method reduces each layer’s pruning + reconstruction to fast, approximate 
 
 ---
 
-### 📐 Mathematical Formulation
+# SparseGPT Mathematics & Method
 
-#### Layer Setup
-For a layer with weight matrix \(W \in \mathbb{R}^{d_{\text{row}} \times d_{\text{col}}}\) and calibration activations \(X \in \mathbb{R}^{d_{\text{col}} \times n}\), define the (damped) empirical Hessian:
-\[
-H = XX^\top + \lambda I, 
-\qquad H^{-1} = (XX^\top + \lambda I)^{-1}.
-\]
+SparseGPT (Frantar & Alistarh, ICML 2023) introduces a one-shot pruning approach for large language models. 
+It prunes **50–60% of weights** in a single pass, without retraining, while preserving perplexity. 
+The method uses second-order information from a calibration set to decide which weights to prune and how to optimally compensate.
 
-#### Pruning Objective (Eq. 1)
-With binary mask \(M\) (1 = keep, 0 = prune) and candidate reconstruction \(W^c\):
-\[
-\underset{M, W^c}{\arg\min} \;\; \|\, W X - (M \odot W^c) X \,\|_2^2 .
-\tag{1}
-\]
+---
 
-#### Optimal Reconstruction with Fixed Mask (Eq. 2)
-For row \(w_i\) and its kept indices \(M_i\):
-\[
+## Layer Setup
+For a weight matrix $W \in \mathbb{R}^{d_{\text{row}} \times d_{\text{col}}}$ and calibration activations 
+$X \in \mathbb{R}^{d_{\text{col}} \times n}$, define the (damped) empirical Hessian:
+
+$$
+H = X X^\top + \lambda I, 
+\qquad 
+H^{-1} = (X X^\top + \lambda I)^{-1}.
+$$
+
+---
+
+## Pruning Objective (Eq. 1)
+The goal is to find a binary mask $M$ (1 = keep, 0 = prune) and reconstructed weights $W^c$:
+
+$$
+\min_{M,\,W^c} \;\; \| W X - (M \odot W^c) X \|_2^2 .
+$$
+
+---
+
+## Optimal Reconstruction with Fixed Mask (Eq. 2)
+If $M$ is fixed, then for each row $w_i$ with active indices $M_i$:
+
+$$
 (w_i)_{M_i} 
-= \big(X_{M_i}X_{M_i}^\top\big)^{-1} X_{M_i}\,\big((w_i)_{M_i} X_{M_i}\big)^\top .
-\tag{2}
-\]
+= (X_{M_i} X_{M_i}^\top)^{-1} \, X_{M_i} \, \big((w_i)_{M_i} X_{M_i}\big)^\top .
+$$
 
-#### OBS Error (Eq. 3)
-Pruning a single weight \(w_m\) gives optimal update:
-\[
-\delta_m = -\,\frac{w_m}{[H^{-1}]_{mm}} \; H^{-1}_{:,m},
-\qquad
+---
+
+## OBS Error for Single Weight Removal (Eq. 3)
+If we prune weight $w_m$, the optimal local update and associated error are:
+
+$$
+\delta_m = - \frac{w_m}{[H^{-1}]_{mm}} \, H^{-1}_{:,m}, 
+\qquad 
 \varepsilon_m = \frac{w_m^2}{[H^{-1}]_{mm}} .
-\tag{3}
-\]
+$$
+
+This score $\varepsilon_m$ is used to decide which weights are cheapest to remove.
 
 ---
 
-### 🚀 SparseGPT Core Algorithm
-
-- **Column-wise pruning:** process columns sequentially, reuse the inverse-Hessian sequence.  
-- **Block selection:** group columns into blocks of size \(B_s\) (default 128).  
-- **Scoring:** prune entries with smallest \(w_c^2 / [H^{-1}]_{cc}\).  
-- **Updates:** apply lazy batched OBS compensation to future columns only.  
-
-This reduces complexity from \(O(d_{\text{hidden}}^4)\) to \(O(d_{\text{hidden}}^3)\).
+## SparseGPT Algorithm
+- **Column-wise pruning:** process weights column by column, reusing the same inverse Hessian sequence.  
+- **Block-wise selection:** group columns into blocks of size $B_s$ (typically 128).  
+- **Scoring:** prune weights with lowest ratio $w_c^2 / [H^{-1}]_{cc}$.  
+- **Lazy OBS updates:** compensate only future columns → reduces cost from $O(d_{\text{hidden}}^4)$ to $O(d_{\text{hidden}}^3)$.
 
 ---
 
-### 🔧 Extensions
+## Extensions
 
-#### Weight Freezing (Eq. 6)
-\[
+**Weight Freezing (Eq. 6):**
+
+$$
 \text{compress}(w_j)_i =
 \begin{cases}
-0, & j \notin M_i, \\
-w^j_i, & \text{otherwise}.
+0 & j \notin M_i, \\
+w^j_i & \text{otherwise}.
 \end{cases}
-\tag{6}
-\]
+$$
 
-#### Joint Pruning + Quantization (Eq. 7)
-\[
-E_{:,j-i}
-\;\leftarrow\;
-\frac{W_{:,j} - M_{:,j}\odot \mathrm{quant}(W_{:,j})}{[H^{-1}]_{jj}} .
-\tag{7}
-\]
+**Joint Pruning + Quantization (Eq. 7):**
 
-#### Semi-structured \(n{:}m\) sparsity
-Set block size \(B_s=m\), prune the \(n\) lowest-scoring entries within each group. Supports **2:4**, **4:8**, etc.
+$$
+E_{:,j-i} \leftarrow 
+\frac{W_{:,j} - M_{:,j} \odot \mathrm{quant}(W_{:,j})}{[H^{-1}]_{jj}} .
+$$
 
----
-
-### ⚙️ Practical Hyperparameters
-
-- **Calibration set:** 64–128 sequences × 2048 tokens  
-- **Dampening factor \(\lambda\):** ~1% of avg diagonal of \(H\)  
-- **Block size \(B_s\):** ~128  
+**Structured $n{:}m$ sparsity:** set block size $B_s = m$, prune the $n$ lowest-scoring weights per group (supports 2:4, 4:8, etc.).
 
 ---
 
